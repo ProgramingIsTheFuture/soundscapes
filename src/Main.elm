@@ -6,12 +6,12 @@ import Browser.Navigation as Nav
 import Common exposing (..)
 import Dashboard exposing (dashboard)
 import File.Download
+import GenPage exposing (genPdf)
 import Html exposing (div, text)
 import Http exposing (Error(..), Response(..), emptyBody)
 import Login exposing (submitLogin)
 import Mood exposing (mood)
 import Name exposing (name)
-import Pdf exposing (genPdf)
 import Platform.Cmd as Cmd
 import PlaylistApi exposing (..)
 import Random exposing (..)
@@ -222,7 +222,7 @@ update msg model =
         DashboardUsersList r ->
             case r of
                 Ok lu ->
-                    ( { model | dashboardUsers = lu, pdfBytes = Just (Pdf.genPdf lu) }, Cmd.none )
+                    ( { model | dashboardUsers = lu, pdfBytes = Just (genPdf lu) }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )

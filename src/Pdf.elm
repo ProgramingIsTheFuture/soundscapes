@@ -1,55 +1,34 @@
 module Pdf exposing
-    ( pdf, page, paperSize, encoder, toBytes, Pdf, Page, ASizes(..), Orientation(..)
-    , text, imageFit, imageStretch, Item, PageCoordinates
-    , jpeg, imageSize, Image, ImageId
-    , helvetica, timesRoman, courier, symbol, zapfDingbats, Font
-    , genPdf
+    ( ASizes(..)
+    , Font
+    , Image
+    , ImageId
+    , Item
+    , Orientation(..)
+    , Page
+    , PageCoordinates
+    , Pdf
+    , courier
+    , encoder
+    , helvetica
+    , imageFit
+    , imageSize
+    , imageStretch
+    , jpeg
+    , page
+    , paperSize
+    , pdf
+    , symbol
+    , text
+    , timesRoman
+    , toBytes
+    , zapfDingbats
     )
-
-{-| In order to use this package you'll need to install
-[`ianmackenzie/elm-geometry`](https://package.elm-lang.org/packages/ianmackenzie/elm-geometry/latest/)
-, [`ianmackenzie/elm-units`](https://package.elm-lang.org/packages/ianmackenzie/elm-units/latest/)
-, and [`elm/bytes`](https://package.elm-lang.org/packages/elm/bytes/latest/).
-
-
-# PDF creation
-
-@docs pdf, page, paperSize, encoder, toBytes, Pdf, Page, ASizes, Orientation
-
-
-# Page content
-
-The content to show on a page.
-Currently only text and images can be shown and a lot of features are missing such as automatic line breaks, unicode, and custom fonts.
-
-@docs text, imageFit, imageStretch, Item, PageCoordinates
-
-
-# Image resources
-
-Before you can add an image to a page you need to load it. Currently only jpeg images are supported.
-
-Note that, the PDF standard only supports jpeg, jpeg2000 (a successor to jpeg that no one uses), and raw bitmap data.
-The best this package can possibly do is automatically convert unsupported formats (PNG images, for example) into one of those.
-For now it's up to the user to do that conversion.
-
-@docs jpeg, imageSize, Image, ImageId
-
-
-# Built-in fonts
-
-There are a few fonts that PDF supports by default.
-Custom fonts have to be embedded in the file in order to be used and this package doesn't support that yet.
-
-@docs helvetica, timesRoman, courier, symbol, zapfDingbats, Font
-
--}
 
 import BoundingBox2d exposing (BoundingBox2d)
 import Bytes exposing (Bytes)
 import Bytes.Decode as BD
 import Bytes.Encode as BE
-import Common
 import Dict exposing (Dict)
 import Flate
 import Length exposing (Length, Meters)
@@ -58,30 +37,21 @@ import Point2d exposing (Point2d)
 import Quantity exposing (Quantity)
 import Round
 import Set exposing (Set)
-import Types exposing (User)
 import Vector2d exposing (Vector2d)
 
 
-{-| The coordinate system used when placing things on a page.
-The top left corner is the origin point.
-Larger x values moves you to the right and larger y values move you down the page.
--}
 type PageCoordinates
     = PageCoordinates Never
 
 
-{-| -}
 type Pdf
     = Pdf { title : String, pages : List Page }
 
 
-{-| -}
 type Page
     = Page (Vector2d Meters PageCoordinates) (List Item)
 
 
-{-| Something that gets drawn to a page.
--}
 type Item
     = TextItem
         { position : Point2d Meters PageCoordinates
@@ -97,8 +67,6 @@ type ImageBounds
     | ImageFit (BoundingBox2d Meters PageCoordinates)
 
 
-{-| An image that we can draw onto some pages.
--}
 type Image
     = JpegImage
         { imageId : String
@@ -153,8 +121,6 @@ jpegSizeDecoder =
             )
 
 
-{-| Get the pixel dimensions of an image.
--}
 imageSize : Image -> ( Quantity Int Pixels, Quantity Int Pixels )
 imageSize image =
     case image of
@@ -162,8 +128,6 @@ imageSize image =
             size
 
 
-{-| Create a jpeg image. The string provided is an identifier. Make sure it's unique for each image.
--}
 jpeg : ImageId -> Bytes -> Maybe Image
 jpeg imageId_ bytes =
     Maybe.map
@@ -180,21 +144,6 @@ jpeg imageId_ bytes =
         )
 
 
-
---{-| Same as [`jpeg`](#jpeg) but you provide the image dimensions yourself.
---This is less safe but might be necessary if you have a large jpeg that's slow to parse.
----}
---unsafeJpeg : ImageId -> Bytes -> ( Quantity Int Pixels, Quantity Int Pixels ) -> Image
---unsafeJpeg imageId_ bytes size =
---    JpegImage
---        { imageId = imageId_
---        , size = size
---        , jpegData = bytes
---        }
-
-
-{-| Text displayed on a page.
--}
 text : Length -> Font -> Point2d Meters PageCoordinates -> String -> Item
 text fontSize font position text_ =
     TextItem
@@ -209,8 +158,6 @@ type alias ImageId =
     String
 
 
-{-| Draw an image with its width and height distorted to fill a bounding box.
--}
 imageStretch : BoundingBox2d Meters PageCoordinates -> Image -> Item
 imageStretch bounds image =
     ImageItem
@@ -219,8 +166,6 @@ imageStretch bounds image =
         }
 
 
-{-| Fit image inside a bounding box while maintaining aspect ratio.
--}
 imageFit : BoundingBox2d Meters PageCoordinates -> Image -> Item
 imageFit bounds image =
     ImageItem
@@ -229,8 +174,6 @@ imageFit bounds image =
         }
 
 
-{-| A page in our PDF document.
--}
 page : { size : Vector2d Meters PageCoordinates, contents : List Item } -> Page
 page { size, contents } =
     let
@@ -240,10 +183,6 @@ page { size, contents } =
     Page (Vector2d.unsafe { x = max 0 x, y = max 0 y }) contents
 
 
-{-| [Standard sizes for paper](https://en.wikipedia.org/wiki/ISO_216).
-Smaller numbers mean larger sizes.
-If you printed something on a typical home printer then it was probably on A4 sized paper.
--}
 type ASizes
     = A0
     | A1
@@ -258,23 +197,11 @@ type ASizes
     | A10
 
 
-{-| The orientation of our page.
-Landscape means the long edge of the page is horizontal and portrait means the long edge of the page is vertical.
--}
 type Orientation
     = Landscape
     | Portrait
 
 
-{-| Typical sizes for paper in physical units.
-
-    paperSize A4 Portrait -- Vector2d.millimeters 210 297
-
-    paperSize A4 Landscape -- Vector2d.millimeters 297 210
-
-    paperSize A0 Landscape -- Vector2d.millimeters 1189 841
-
--}
 paperSize : Orientation -> ASizes -> Vector2d Meters PageCoordinates
 paperSize orientation size =
     let
@@ -321,8 +248,6 @@ paperSize orientation size =
             v
 
 
-{-| Create a PDF.
--}
 pdf : { title : String, pages : List Page } -> Pdf
 pdf =
     Pdf
@@ -357,36 +282,11 @@ images =
         >> Dict.fromList
 
 
-
---- ENCODE ---
-
-
-{-| Convert PDF to binary data that can be used as a PDF file.
-
-This is the same as:
-
-    import Bytes.Encode
-    import Pdf
-
-    Pdf.encoder myPdf |> Bytes.Encode.encode
-
--}
 toBytes : Pdf -> Bytes
 toBytes =
     encoder >> BE.encode
 
 
-{-| An encoder for converting the PDF to binary data.
-
-    import Bytes exposing (Bytes)
-    import Bytes.Encode
-    import Pdf
-
-    output : Bytes
-    output =
-        Pdf.encoder myPdf |> Bytes.Encode.encode
-
--}
 encoder : Pdf -> BE.Encoder
 encoder pdf_ =
     let
@@ -482,9 +382,6 @@ encoder pdf_ =
         ]
 
 
-{-| Original code from elm-community/list-extra.
-Copied here so we don't need an entire dependency for a small portion of the API.
--}
 uniqueBy : (a -> comparable) -> List a -> List a
 uniqueBy f list =
     uniqueHelp f Set.empty list []
@@ -1207,84 +1104,3 @@ fontName font =
 
         ZapfDingbats ->
             "ZapfDingbats"
-
-
-slide : List Item -> Page
-slide contents =
-    page
-        { size =
-            Vector2d.millimeters 210 297
-        , contents = contents
-        }
-
-
-pos : Float -> Float -> Point2d Meters PageCoordinates
-pos x y =
-    Point2d.xy (Length.points x) (Length.points y)
-
-
-defaultFont : Font
-defaultFont =
-    helvetica { bold = False, oblique = False }
-
-
-margin : number
-margin =
-    5
-
-
-titleFontSize : Length
-titleFontSize =
-    Length.points 30
-
-
-normalFontSize : Length
-normalFontSize =
-    Length.points 12
-
-
-genPdf : List User -> Bytes
-genPdf users =
-    pdf
-        { title = "Users list"
-        , pages =
-            List.append
-                [ slide
-                    [ text
-                        titleFontSize
-                        defaultFont
-                        (pos margin 400)
-                        "Users list"
-                    ]
-                ]
-                [ slide
-                    (text
-                        normalFontSize
-                        defaultFont
-                        (pos margin 25)
-                        ("Id "
-                            ++ " | Username "
-                            ++ " | Email "
-                            ++ " | Role"
-                        )
-                        :: List.indexedMap
-                            (\i user ->
-                                text
-                                    normalFontSize
-                                    defaultFont
-                                    (pos margin (Basics.toFloat (i + 1) * 75.0))
-                                    ("Id: "
-                                        ++ user.id
-                                        ++ " | Username: "
-                                        ++ user.username
-                                        ++ " | Email: "
-                                        ++ user.email
-                                        ++ " | Role: "
-                                        ++ (user.role |> String.fromInt)
-                                    )
-                            )
-                            users
-                    )
-                ]
-        }
-        |> toBytes
